@@ -127,21 +127,29 @@ class IPTVDownloader:
     
     def _get_playlist_url(self) -> Optional[str]:
         """Запросить у пользователя ссылку на плейлист."""
-        # Показать историю
+        # Показать историю (только уникальные URL)
         history = load_playlist_history()
         if history:
+            # Оставить только уникальные URL (последние вхождения)
+            seen_urls = set()
+            unique_history = []
+            for item in reversed(history):
+                if item.url not in seen_urls:
+                    seen_urls.add(item.url)
+                    unique_history.insert(0, item)
+
             print("\n📋 Последние плейлисты:")
-            for i, item in enumerate(history[-5:], 1):
+            for i, item in enumerate(unique_history[-5:], 1):
                 print(f"  {i}. {item.url}")
             print("  0. Ввести ссылку вручную")
             print()
-            
+
             # Предложить выбор из истории
             choice = input("Выберите плейлист (0-5): ").strip()
             try:
                 idx = int(choice)
-                if 1 <= idx <= min(5, len(history)):
-                    selected = history[-idx]
+                if 1 <= idx <= min(5, len(unique_history)):
+                    selected = unique_history[-idx]
                     ui.display_info(f"Выбран плейлист: {selected.url}")
                     return selected.url
                 elif idx == 0:
