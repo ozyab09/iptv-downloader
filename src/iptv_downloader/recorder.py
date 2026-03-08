@@ -203,6 +203,17 @@ class RecordingManager:
                 stdin=subprocess.PIPE,
             )
 
+            # Проверить, не завершился ли процесс сразу
+            import time
+            time.sleep(0.5)
+            return_code = self.ffmpeg_process.poll()
+            if return_code is not None and return_code != 0:
+                # ffmpeg завершился с ошибкой
+                stderr = self.ffmpeg_process.stderr.read().decode("utf-8", errors="ignore")
+                import logging
+                logging.error(f"ffmpeg завершился с кодом {return_code}: {stderr}")
+                return False
+
             self.is_recording = True
             self.start_time = datetime.now()
             self.output_path = output_path

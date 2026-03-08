@@ -47,6 +47,9 @@ FFMPEG_HLS_FLAGS: Final = [
     "-flags", "+low_delay",  # Низкая задержка
     "-strict", "experimental",  # Разрешить экспериментальные кодеки
     "-rw_timeout", "30000000",  # Таймаут чтения 30 секунд (в микросекундах)
+    "-allowed_extensions", "ALL",  # Разрешить все расширения для HLS сегментов
+    "-user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",  # User-Agent
+    "-referer", "http://allway.tv/",  # Referer
 ]
 
 

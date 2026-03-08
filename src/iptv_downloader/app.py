@@ -316,6 +316,7 @@ class IPTVDownloader:
             stream_url, output_path, duration_seconds
         ):
             ui.display_error("Не удалось запустить запись")
+            ui.display_error("Проверьте лог ошибок: error.log")
             return
 
         # Информация о записи
@@ -323,30 +324,30 @@ class IPTVDownloader:
         print(f"    Файл: {output_path.name}")
         if duration_seconds:
             print(f"    Длительность: {format_duration(duration_seconds)}")
-        
+
         ui.display_recording_help()
-        
+
         # Мониторинг
         try:
             while self.recording_manager.is_recording:
                 import time
                 time.sleep(1)
-                
+
                 status = self.recording_manager.get_status()
-                
+
                 if not status.is_active:
                     break
-                
+
                 ui.display_recording_status(status)
-        
+
         except KeyboardInterrupt:
             print("\n\n[!] Получен сигнал остановки")
-        
+
         finally:
             self.recording_manager.stop_recording()
-        
+
         # Результат
-        if output_path.exists():
+        if output_path.exists() and output_path.stat().st_size > 0:
             file_size = get_file_size(output_path)
             ui.display_success("Запись завершена!")
             print(f"    Файл: {output_path}")
@@ -354,3 +355,4 @@ class IPTVDownloader:
                 print(f"    Размер: {format_file_size(file_size)}")
         else:
             ui.display_error("Файл не был создан или запись не удалась")
+            ui.display_error("Проверьте лог ошибок: error.log")
