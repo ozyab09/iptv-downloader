@@ -41,6 +41,14 @@ FFMPEG_DEFAULT_ARGS: Final = [
     "-movflags", "+faststart",  # Оптимизировать для воспроизведения
 ]
 
+# FFmpeg HLS flags для потоков
+FFMPEG_HLS_FLAGS: Final = [
+    "-fflags", "+discard_corrupt",  # Отбрасывать повреждённые пакеты
+    "-flags", "+low_delay",  # Низкая задержка
+    "-strict", "experimental",  # Разрешить экспериментальные кодеки
+    "-rw_timeout", "30000000",  # Таймаут чтения 30 секунд (в микросекундах)
+]
+
 
 def ensure_directories() -> None:
     """Создать необходимые директории если они не существуют."""

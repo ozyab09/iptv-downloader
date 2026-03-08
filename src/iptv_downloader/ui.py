@@ -3,8 +3,7 @@
 Интерактивный ввод, отображение информации.
 """
 
-import sys
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple
 
 from .models import Channel, Program, RecordingStatus
 

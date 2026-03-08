@@ -2,9 +2,9 @@
 Модели данных для IPTV Downloader.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 
 @dataclass

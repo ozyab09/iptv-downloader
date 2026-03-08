@@ -6,16 +6,10 @@
 import signal
 import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, List
 
-from .config import (
-    DOWNLOADS_DIR,
-    HISTORY_DIR,
-    __version__,
-    ensure_directories,
-)
-from .models import Channel, Program, PlaylistInfo
+from .config import DOWNLOADS_DIR, __version__, ensure_directories
+from .models import Channel, PlaylistInfo
 from .playlist import (
     download_playlist,
     load_playlist_history,
@@ -139,18 +133,34 @@ class IPTVDownloader:
             print("\n📋 Последние плейлисты:")
             for i, item in enumerate(history[-5:], 1):
                 print(f"  {i}. {item.url}")
+            print("  0. Ввести ссылку вручную")
             print()
-        
+            
+            # Предложить выбор из истории
+            choice = input("Выберите плейлист (0-5): ").strip()
+            try:
+                idx = int(choice)
+                if 1 <= idx <= min(5, len(history)):
+                    selected = history[-idx]
+                    ui.display_info(f"Выбран плейлист: {selected.url}")
+                    return selected.url
+                elif idx == 0:
+                    pass  # Продолжить к ручному вводу
+                else:
+                    ui.display_warning("Неверный номер, введите ссылку вручную")
+            except ValueError:
+                pass  # Продолжить к ручному вводу
+
         while True:
             url = ui.get_user_input(
                 prompt="Введите ссылку на IPTV плейлист (или 'q' для выхода):",
                 validator=lambda x: x.lower() == "q" or validate_url(x),
                 error_message="[!] Неверный формат URL. Должен начинаться с http:// или https://",
             )
-            
+
             if url.lower() == "q":
                 return None
-            
+
             return url
     
     def _process_channel_selection(self) -> None:
@@ -307,9 +317,9 @@ class IPTVDownloader:
         ):
             ui.display_error("Не удалось запустить запись")
             return
-        
+
         # Информация о записи
-        print(f"\n[*] Запуск записи...")
+        print("\n[*] Запуск записи...")
         print(f"    Файл: {output_path.name}")
         if duration_seconds:
             print(f"    Длительность: {format_duration(duration_seconds)}")

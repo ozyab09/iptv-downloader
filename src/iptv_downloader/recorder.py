@@ -4,12 +4,11 @@
 """
 
 import subprocess
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Tuple, List
+from typing import Optional, List
 
-from .config import FFMPEG_DEFAULT_ARGS, DOWNLOADS_DIR
+from .config import FFMPEG_DEFAULT_ARGS, FFMPEG_HLS_FLAGS
 from .models import RecordingStatus, StreamQuality
 
 
@@ -54,31 +53,31 @@ def get_ffmpeg_info() -> str:
 def get_stream_qualities(url: str, timeout: int = 10) -> List[StreamQuality]:
     """
     Получить доступные качества потока из M3U8 плейлиста.
-    
+
     Args:
         url: URL потока.
         timeout: Таймаут запроса.
-        
+
     Returns:
         Список доступных качеств.
     """
     import requests
-    
+
     qualities: List[StreamQuality] = []
-    
+
     try:
-        response = requests.get(url, timeout=timeout)
+        response = requests.get(url, timeout=timeout, headers={"User-Agent": "Mozilla/5.0"})
         response.raise_for_status()
         content = response.text
-        
-        # Проверить, это ли master playlist
+
+        # Проверить, это ли master playlist (содержит несколько вариантов качества)
         if "#EXT-X-STREAM-INF" in content:
             lines = content.strip().split("\n")
             current_quality: dict = {}
-            
+
             for line in lines:
                 line = line.strip()
-                
+
                 if line.startswith("#EXT-X-STREAM-INF:"):
                     current_quality = {}
                     # Извлечь разрешение
@@ -90,13 +89,13 @@ def get_stream_qualities(url: str, timeout: int = 10) -> List[StreamQuality]:
                             current_quality["width"] = int(parts[0])
                             current_quality["height"] = int(parts[1])
                             current_quality["quality"] = f"{parts[1]}p"
-                    
+
                     # Извлечь битрейт
                     bw_match = line.split("BANDWIDTH=")
                     if len(bw_match) > 1:
                         bw = bw_match[1].split(",")[0]
                         current_quality["bandwidth"] = int(bw)
-                
+
                 elif line.startswith("http://") or line.startswith("https://"):
                     if current_quality:
                         current_quality["url"] = line
@@ -110,14 +109,18 @@ def get_stream_qualities(url: str, timeout: int = 10) -> List[StreamQuality]:
                             height=current_quality.get("height", 0),
                         ))
                         current_quality = {}
-        
-        if not qualities:
-            # Это прямой поток
-            qualities.append(StreamQuality(quality="best", url=url))
-    
+            
+            # Если нашли варианты, вернуть их
+            if qualities:
+                return qualities
+
+        # Это media playlist (с сегментами) или прямой поток
+        # ffmpeg может работать с ним напрямую
+        qualities.append(StreamQuality(quality="best", url=url))
+
     except Exception:
         qualities.append(StreamQuality(quality="best", url=url))
-    
+
     return qualities
 
 
@@ -168,12 +171,12 @@ class RecordingManager:
     ) -> bool:
         """
         Начать запись потока.
-        
+
         Args:
             stream_url: URL потока для записи.
             output_path: Путь для сохранения файла.
             duration_seconds: Длительность в секундах (None для бессрочной).
-            
+
         Returns:
             True если запись успешно запущена.
         """
@@ -181,16 +184,17 @@ class RecordingManager:
             # Построить команду ffmpeg
             cmd = ["ffmpeg", "-i", stream_url]
             cmd.extend(FFMPEG_DEFAULT_ARGS)
-            
+            cmd.extend(FFMPEG_HLS_FLAGS)  # Добавить HLS флаги для стабильности
+
             # Если указана длительность
             if duration_seconds:
                 cmd.extend(["-t", str(duration_seconds)])
                 self.expected_end_time = datetime.now() + timedelta(
                     seconds=duration_seconds
                 )
-            
+
             cmd.extend(["-y", str(output_path)])
-            
+
             # Запустить процесс
             self.ffmpeg_process = subprocess.Popen(
                 cmd,
@@ -198,14 +202,16 @@ class RecordingManager:
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE,
             )
-            
+
             self.is_recording = True
             self.start_time = datetime.now()
             self.output_path = output_path
-            
+
             return True
-            
-        except Exception:
+
+        except Exception as e:
+            import logging
+            logging.error(f"Ошибка запуска ffmpeg: {e}")
             return False
     
     def stop_recording(self) -> None:
@@ -263,8 +269,10 @@ class RecordingManager:
             if remaining_seconds > 0:
                 return RecordingStatus(
                     is_active=True,
-                    message=f"Запись идет: {self._format_duration(elapsed_seconds)} "
-                           f"(осталось: {self._format_duration(remaining_seconds)})",
+                    message="Запись идет: {} (осталось: {})".format(
+                        self._format_duration(elapsed_seconds),
+                        self._format_duration(remaining_seconds),
+                    ),
                     elapsed_seconds=elapsed_seconds,
                     remaining_seconds=remaining_seconds,
                 )

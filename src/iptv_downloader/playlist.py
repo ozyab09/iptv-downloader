@@ -64,14 +64,14 @@ def download_playlist(url: str, save_dir: Optional[Path] = None) -> Optional[Pat
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"playlist_{timestamp}{extension}"
         filepath = save_dir / filename
-        
+
         # Сохранить файл
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(response.text)
-        
+
         return filepath
-        
-    except requests.RequestException as e:
+
+    except requests.RequestException:
         return None
     except IOError:
         return None
