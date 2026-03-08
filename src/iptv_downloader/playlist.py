@@ -186,17 +186,18 @@ def parse_m3u_playlist(filepath: Path) -> Tuple[List[Channel], Optional[str]]:
 def save_playlist_info(info: PlaylistInfo) -> bool:
     """
     Сохранить информацию о плейлисте в историю.
-    
+    Не сохраняет дубликаты URL.
+
     Args:
         info: Информация о плейлисте.
-        
+
     Returns:
         True при успехе.
     """
     import yaml
-    
+
     history: List[dict] = []
-    
+
     # Загрузить существующую историю
     if LINKS_FILE.exists():
         try:
@@ -204,10 +205,16 @@ def save_playlist_info(info: PlaylistInfo) -> bool:
                 history = yaml.safe_load(f) or []
         except Exception:
             history = []
-    
+
+    # Проверить на дубликаты
+    for item in history:
+        if item.get("url") == info.url:
+            # URL уже существует, не сохраняем дубликат
+            return True
+
     # Добавить новую запись
     history.append(info.to_dict())
-    
+
     # Сохранить
     try:
         HISTORY_DIR.mkdir(parents=True, exist_ok=True)
